@@ -41,7 +41,7 @@ def load_own_data(label):
         if num_img==0:
             image_array = np.expand_dims(image_array, axis=0)
             total_img=  image_array
-        else:
+        elif num_img%6==0:
             image_array = np.expand_dims(image_array, axis=0)
             total_img=np.concatenate([total_img,image_array], axis=0)
         # print(total_img.shape)
@@ -51,6 +51,7 @@ def load_own_data(label):
             #     print(fn)
             #     filename_path = os.path.join(fd_path,filename)
             #     print(filename_path[0])
+        print("total img shape:",np.array(total_img).shape)
 
     return total_img
 

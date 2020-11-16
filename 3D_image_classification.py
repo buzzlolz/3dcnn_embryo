@@ -25,7 +25,9 @@ equivalent: it takes as input a 3D volume or a sequence of 2D frames (e.g. slice
 ## Setup
 """
 
-from load_owndata_v1 import load_own_data
+from load_owndata import load_own_data
+
+from tensorflow.keras.utils import to_categorical
 
 import os
 import zipfile
@@ -209,16 +211,19 @@ print('abn shape',abnormal_scans.shape)
 # For the CT scans having presence of viral pneumonia
 # assign 1, for the normal ones assign 0.
 abnormal_labels = np.array([1 for _ in range(len(abnormal_scans))])
+abnormal_labels=tf.one_hot(abnormal_labels,2)
 print('abn labels:',abnormal_labels)
 normal_labels = np.array([0 for _ in range(len(normal_scans))])
+normal_labels=tf.one_hot(normal_labels,2)
+
 
 # print('abn label',abnormal_labels.shape)
 
 # Split data in the ratio 70-30 for training and validation.
-x_train = np.concatenate((abnormal_scans[:6], normal_scans[:6]), axis=0)
-y_train = np.concatenate((abnormal_labels[:6], normal_labels[:6]), axis=0)
-x_val = np.concatenate((abnormal_scans[6:], normal_scans[6:]), axis=0)
-y_val = np.concatenate((abnormal_labels[6:], normal_labels[6:]), axis=0)
+x_train = np.concatenate((abnormal_scans, normal_scans), axis=0)
+y_train = np.concatenate((abnormal_labels, normal_labels), axis=0)
+x_val = np.concatenate((abnormal_scans, normal_scans), axis=0)
+y_val = np.concatenate((abnormal_labels, normal_labels), axis=0)
 
 
 print("xtrain:",x_train.shape)
@@ -286,7 +291,7 @@ training and validation data are already rescaled to have values between 0 and 1
 train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 validation_loader = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 
-batch_size = 2
+batch_size = 4
 # Augment the on the fly during training.
 train_dataset = (
     train_loader.shuffle(len(x_train))
@@ -349,7 +354,7 @@ def plot_slices(num_rows, num_columns, width, height, data):
 # Visualize montage of slices.
 # 4 rows and 10 columns for 100 slices of the CT scan.
 print('image shape :',image.shape)
-plot_slices(3,2, 128, 128, image[:, :, :6])
+# plot_slices(3,2, 128, 128, image[:, :, :6])
 
 """
 ## Define a 3D convolutional neural network
@@ -385,7 +390,7 @@ def get_model(width=128, height=128, depth=64):
     x = layers.Dense(units=512, activation="relu")(x)
     x = layers.Dropout(0.3)(x)
 
-    outputs = layers.Dense(units=1, activation="sigmoid")(x)
+    outputs = layers.Dense(units=2, activation="softmax")(x)
 
     # Define the model.
     model = keras.Model(inputs, outputs, name="3dcnn")
@@ -406,7 +411,7 @@ lr_schedule = keras.optimizers.schedules.ExponentialDecay(
     initial_learning_rate, decay_steps=100000, decay_rate=0.96, staircase=True
 )
 model.compile(
-    loss="binary_crossentropy",
+    loss="categorical_crossentropy",
     optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
     metrics=["acc"],
 )
