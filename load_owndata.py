@@ -41,7 +41,7 @@ def load_own_data(label):
         if num_img==0:
             image_array = np.expand_dims(image_array, axis=0)
             total_img=  image_array
-        elif num_img%6==0:
+        elif num_img%8==0:
             image_array = np.expand_dims(image_array, axis=0)
             total_img=np.concatenate([total_img,image_array], axis=0)
         # print(total_img.shape)

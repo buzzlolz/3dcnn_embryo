@@ -27,6 +27,7 @@ equivalent: it takes as input a 3D volume or a sequence of 2D frames (e.g. slice
 
 from load_owndata import load_own_data
 
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 
 import os
@@ -50,30 +51,30 @@ Hence, the task is a binary classification problem.
 """
 
 
-CT_data_path = '/home/n200/D-slot/CT-data/'
+# CT_data_path = '/home/n200/D-slot/CT-data/'
 
 
 
-# Download url of normal CT scans.
-url = "https://github.com/hasibzunair/3D-image-classification-tutorial/releases/download/v0.2/CT-0.zip"
-filename = os.path.join(CT_data_path, "CT-0.zip")
-keras.utils.get_file(filename, url)
+# # Download url of normal CT scans.
+# url = "https://github.com/hasibzunair/3D-image-classification-tutorial/releases/download/v0.2/CT-0.zip"
+# filename = os.path.join(CT_data_path, "CT-0.zip")
+# keras.utils.get_file(filename, url)
 
-# Download url of abnormal CT scans.
-url = "https://github.com/hasibzunair/3D-image-classification-tutorial/releases/download/v0.2/CT-23.zip"
-filename = os.path.join(CT_data_path, "CT-23.zip")
-keras.utils.get_file(filename, url)
+# # Download url of abnormal CT scans.
+# url = "https://github.com/hasibzunair/3D-image-classification-tutorial/releases/download/v0.2/CT-23.zip"
+# filename = os.path.join(CT_data_path, "CT-23.zip")
+# keras.utils.get_file(filename, url)
 
-# Make a directory to store the data.
-if not os.path.isdir("/home/n200/D-slot/CT-data/MosMedData"):
-  os.makedirs("/home/n200/D-slot/CT-data/MosMedData")
+# # Make a directory to store the data.
+# if not os.path.isdir("/home/n200/D-slot/CT-data/MosMedData"):
+#   os.makedirs("/home/n200/D-slot/CT-data/MosMedData")
 
-# Unzip data in the newly created directory.
-with zipfile.ZipFile("/home/n200/D-slot/CT-data/CT-0.zip", "r") as z_fp:
-    z_fp.extractall("/home/n200/D-slot/CT-data/MosMedData")
+# # Unzip data in the newly created directory.
+# with zipfile.ZipFile("/home/n200/D-slot/CT-data/CT-0.zip", "r") as z_fp:
+#     z_fp.extractall("/home/n200/D-slot/CT-data/MosMedData")
 
-with zipfile.ZipFile("/home/n200/D-slot/CT-data/CT-23.zip", "r") as z_fp:
-    z_fp.extractall("/home/n200/D-slot/CT-data/MosMedData")
+# with zipfile.ZipFile("/home/n200/D-slot/CT-data/CT-23.zip", "r") as z_fp:
+#     z_fp.extractall("/home/n200/D-slot/CT-data/MosMedData")
 
 """
 ## Loading data and preprocessing
@@ -162,25 +163,25 @@ def process_scan(path):
 Let's read the paths of the CT scans from the class directories.
 """
 
-# Folder "CT-0" consist of CT scans having normal lung tissue,
-# no CT-signs of viral pneumonia.
-normal_scan_paths = [
-    os.path.join(CT_data_path, "MosMedData/CT-0", x)
-    for x in os.listdir(os.path.join(CT_data_path,"MosMedData/CT-0"))
-]
-normal_scan_paths=normal_scan_paths[:10]
+# # Folder "CT-0" consist of CT scans having normal lung tissue,
+# # no CT-signs of viral pneumonia.
+# normal_scan_paths = [
+#     os.path.join(CT_data_path, "MosMedData/CT-0", x)
+#     for x in os.listdir(os.path.join(CT_data_path,"MosMedData/CT-0"))
+# ]
+# normal_scan_paths=normal_scan_paths[:10]
 
-# Folder "CT-23" consist of CT scans having several ground-glass opacifications,
-# involvement of lung parenchyma.
-abnormal_scan_paths = [
-    os.path.join(CT_data_path, "MosMedData/CT-23", x)
-    for x in os.listdir(os.path.join(CT_data_path,"MosMedData/CT-23"))
+# # Folder "CT-23" consist of CT scans having several ground-glass opacifications,
+# # involvement of lung parenchyma.
+# abnormal_scan_paths = [
+#     os.path.join(CT_data_path, "MosMedData/CT-23", x)
+#     for x in os.listdir(os.path.join(CT_data_path,"MosMedData/CT-23"))
     
-]
-abnormal_scan_paths=abnormal_scan_paths[:10]
+# ]
+# abnormal_scan_paths=abnormal_scan_paths[:10]
 
-print("CT scans with normal lung tissue: " + str(len(normal_scan_paths)))
-print("CT scans with abnormal lung tissue: " + str(len(abnormal_scan_paths)))
+# print("CT scans with normal lung tissue: " + str(len(normal_scan_paths)))
+# print("CT scans with abnormal lung tissue: " + str(len(abnormal_scan_paths)))
 
 
 """
@@ -189,41 +190,75 @@ Read the scans from the class directories and assign labels. Downsample the scan
 shape of 128x128x64. Rescale the raw HU values to the range 0 to 1.
 Lastly, split the dataset into train and validation subsets.
 """
-
-# Read and process the scans.
-# Each scan is resized across height, width, and depth and rescaled.
-
-abnormal_scans=load_own_data(1)
-
-abnormal_scans = np.array([resize_volume(img) for img in abnormal_scans])
-# print(abnormal_scans)
-
-normal_scans=load_own_data(2)
-normal_scans = np.array([resize_volume(img) for img in normal_scans])
-
-# abnormal_scans = np.array([process_scan(path) for path in abnormal_scan_paths])
-# normal_scans = np.array([process_scan(path) for path in normal_scan_paths])
+data_x=[]
+label_y=[]
 
 
+for i in range(1,8):
+    if i ==1:
+        data_i=load_own_data(i)
+        data_i=np.array([resize_volume(img) for img in data_i])
+        data_x=data_i
 
-print('abn shape',abnormal_scans.shape)
+        label = np.array([i for _ in range(len(data_x))])
+        label=tf.one_hot(label,7)
+        label_y=label
+        print("shape label_y:",label_y.shape)
+    else:
+        data_i=load_own_data(i)
+        data_i=np.array([resize_volume(img) for img in data_i])
+        data_x=np.concatenate((data_x,data_i),axis=0)
+        print('data x shape:',data_x.shape)
+        label = np.array([i for _ in range(len(data_i))])
+        label=tf.one_hot(label,7)
+        label_y = np.concatenate((label_y, label), axis=0)
+        
+        print("shape label_y:",label_y.shape)
 
-# For the CT scans having presence of viral pneumonia
-# assign 1, for the normal ones assign 0.
-abnormal_labels = np.array([1 for _ in range(len(abnormal_scans))])
-abnormal_labels=tf.one_hot(abnormal_labels,2)
-print('abn labels:',abnormal_labels)
-normal_labels = np.array([0 for _ in range(len(normal_scans))])
-normal_labels=tf.one_hot(normal_labels,2)
 
 
-# print('abn label',abnormal_labels.shape)
 
-# Split data in the ratio 70-30 for training and validation.
-x_train = np.concatenate((abnormal_scans, normal_scans), axis=0)
-y_train = np.concatenate((abnormal_labels, normal_labels), axis=0)
-x_val = np.concatenate((abnormal_scans, normal_scans), axis=0)
-y_val = np.concatenate((abnormal_labels, normal_labels), axis=0)
+print("shape label_y:",label_y.shape)
+
+# # Read and process the scans.
+# # Each scan is resized across height, width, and depth and rescaled.
+
+# abnormal_scans=load_own_data(2)
+
+# abnormal_scans = np.array([resize_volume(img) for img in abnormal_scans])
+# # print(abnormal_scans)
+
+# normal_scans=load_own_data(7)
+# normal_scans = np.array([resize_volume(img) for img in normal_scans])
+
+# # abnormal_scans = np.array([process_scan(path) for path in abnormal_scan_paths])
+# # normal_scans = np.array([process_scan(path) for path in normal_scan_paths])
+
+
+
+# print('abn shape',abnormal_scans.shape)
+
+# # For the CT scans having presence of viral pneumonia
+# # assign 1, for the normal ones assign 0.
+
+
+
+# abnormal_labels = np.array([1 for _ in range(len(abnormal_scans))])
+# abnormal_labels=tf.one_hot(abnormal_labels,2)
+# print('abn labels:',abnormal_labels)
+# normal_labels = np.array([0 for _ in range(len(normal_scans))])
+# normal_labels=tf.one_hot(normal_labels,2)
+
+
+# # print('abn label',abnormal_labels.shape)
+
+# # Split data in the ratio 70-30 for training and validation.
+# x = np.concatenate((abnormal_scans, normal_scans), axis=0)
+# y = np.concatenate((abnormal_labels, normal_labels), axis=0)
+x_train, x_val, y_train, y_val  = train_test_split(data_x,label_y, test_size=0.3)
+print('x train , x val , y train , y val:',np.array(x_train).shape,np.array(x_val).shape,np.array(y_train).shape,np.array(y_val).shape)
+# x_val = np.concatenate((abnormal_scans, normal_scans), axis=0)
+# y_val = np.concatenate((abnormal_labels, normal_labels), axis=0)
 
 
 print("xtrain:",x_train.shape)
@@ -387,10 +422,10 @@ def get_model(width=128, height=128, depth=64):
     x = layers.BatchNormalization()(x)
 
     x = layers.GlobalAveragePooling3D()(x)
-    x = layers.Dense(units=512, activation="relu")(x)
-    x = layers.Dropout(0.3)(x)
+    x = layers.Dense(units=128, activation="relu")(x)
+    # x = layerss.Dropout(0.3)(x)
 
-    outputs = layers.Dense(units=2, activation="softmax")(x)
+    outputs = layers.Dense(units=7, activation="softmax")(x)
 
     # Define the model.
     model = keras.Model(inputs, outputs, name="3dcnn")
@@ -430,7 +465,8 @@ model.fit(
     epochs=epochs,
     shuffle=True,
     verbose=2,
-    callbacks=[checkpoint_cb, early_stopping_cb],
+    # callbacks=[checkpoint_cb, early_stopping_cb],
+    callbacks=[checkpoint_cb],
 )
 
 """
