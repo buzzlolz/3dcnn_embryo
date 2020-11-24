@@ -25,7 +25,7 @@ equivalent: it takes as input a 3D volume or a sequence of 2D frames (e.g. slice
 ## Setup
 """
 
-from load_owndata import load_own_data
+from load_owndata import load_own_data,get_total_datanum
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
@@ -34,6 +34,10 @@ import os
 import zipfile
 import numpy as np
 import tensorflow as tf
+
+import copy
+
+import gc 
 
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -125,7 +129,7 @@ def normalize(volume):
 def resize_volume(img):
     """Resize across z-axis"""
     # Set the desired depth
-    desired_depth = 64
+    desired_depth = 8
     desired_width = 128
     desired_height = 128
     # Get current depth
@@ -145,6 +149,8 @@ def resize_volume(img):
     img = ndimage.rotate(img, 90, reshape=False)
     # Resize across z-axis
     img = ndimage.zoom(img, (width_factor, height_factor, depth_factor), order=1)
+
+    # print('img done')
     return img
 
 
@@ -193,29 +199,53 @@ Lastly, split the dataset into train and validation subsets.
 data_x=[]
 label_y=[]
 
+total_datanum=get_total_datanum()
+
+data_x=np.empty(shape=[total_datanum,128, 128,8])
+label_y=np.empty(shape=[total_datanum,8])
+
+
+
+# for i in range(1,8):
+#     if i ==1:
+#         data_i=load_own_data(i)
+#         data_i=np.array([resize_volume(img) for img in data_i])
+#         data_x=data_i
+
+#         label = np.array([i for _ in range(len(data_x))])
+#         label=tf.one_hot(label,7)
+#         label_y=label
+#         print("shape label_y:",label_y.shape)
+#     else:
+#         data_i=load_own_data(i)
+#         data_i=np.array([resize_volume(img) for img in data_i])
+#         data_x=np.concatenate((data_x,data_i),axis=0)
+#         print('data x shape:',data_x.shape)
+#         label = np.array([i for _ in range(len(data_i))])
+#         label=tf.one_hot(label,7)
+#         label_y = np.concatenate((label_y, label), axis=0)
+        
+#         print("shape label_y:",label_y.shape)
+
+num_index = 0
 
 for i in range(1,8):
-    if i ==1:
-        data_i=load_own_data(i)
-        data_i=np.array([resize_volume(img) for img in data_i])
-        data_x=data_i
 
-        label = np.array([i for _ in range(len(data_x))])
-        label=tf.one_hot(label,7)
-        label_y=label
-        print("shape label_y:",label_y.shape)
-    else:
-        data_i=load_own_data(i)
-        data_i=np.array([resize_volume(img) for img in data_i])
-        data_x=np.concatenate((data_x,data_i),axis=0)
-        print('data x shape:',data_x.shape)
-        label = np.array([i for _ in range(len(data_i))])
-        label=tf.one_hot(label,7)
-        label_y = np.concatenate((label_y, label), axis=0)
-        
-        print("shape label_y:",label_y.shape)
+    file_num,data_i=load_own_data(i)
+    print("file num:",file_num)
+    print("num_index:",num_index)
+    data_i=np.array([resize_volume(img) for img in data_i])
+    data_x[num_index:num_index+file_num]=copy.deepcopy(data_i)
+    label = np.array([i for _ in range(len(data_i))])
+    data_i=None
+    label=tf.one_hot(label,8)
+    label_y[num_index:num_index+file_num]=label
+    print("shape label_y:",label_y.shape)
+    label=None
+    num_index+=file_num
 
-
+data_x=data_x.astype(np.float32)#import !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+label_y=label_y.astype(np.float32)#import !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 print("shape label_y:",label_y.shape)
@@ -255,6 +285,7 @@ print("shape label_y:",label_y.shape)
 # # Split data in the ratio 70-30 for training and validation.
 # x = np.concatenate((abnormal_scans, normal_scans), axis=0)
 # y = np.concatenate((abnormal_labels, normal_labels), axis=0)
+
 x_train, x_val, y_train, y_val  = train_test_split(data_x,label_y, test_size=0.3)
 print('x train , x val , y train , y val:',np.array(x_train).shape,np.array(x_val).shape,np.array(y_train).shape,np.array(y_val).shape)
 # x_val = np.concatenate((abnormal_scans, normal_scans), axis=0)
@@ -262,6 +293,7 @@ print('x train , x val , y train , y val:',np.array(x_train).shape,np.array(x_va
 
 
 print("xtrain:",x_train.shape)
+print(' ytrain shape',y_train.shape)
 print(
     "Number of samples in train and validation are %d and %d."
     % (x_train.shape[0], x_val.shape[0])
@@ -329,15 +361,15 @@ validation_loader = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 batch_size = 4
 # Augment the on the fly during training.
 train_dataset = (
-    train_loader.shuffle(len(x_train))
-    .map(train_preprocessing)
+    # train_loader.shuffle(len(x_train))
+    train_loader.map(train_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
 # Only rescale.
 validation_dataset = (
-    validation_loader.shuffle(len(x_val))
-    .map(validation_preprocessing)
+    # validation_loader.shuffle(len(x_val))
+    validation_loader.map(validation_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
@@ -349,6 +381,8 @@ Visualize an augmented CT scan.
 import matplotlib.pyplot as plt
 
 data = train_dataset.take(1)
+# print(np.array(list(data)).shape)
+# print("data shape:",data.shape)
 
 images, labels = list(data)[0]
 images = images.numpy()
@@ -389,7 +423,7 @@ def plot_slices(num_rows, num_columns, width, height, data):
 # Visualize montage of slices.
 # 4 rows and 10 columns for 100 slices of the CT scan.
 print('image shape :',image.shape)
-# plot_slices(3,2, 128, 128, image[:, :, :6])
+plot_slices(3,2, 128, 128, image[:, :, :6])
 
 """
 ## Define a 3D convolutional neural network
@@ -400,32 +434,32 @@ is based on [this paper](https://arxiv.org/abs/2007.13224).
 """
 
 
-def get_model(width=128, height=128, depth=64):
+def get_model(width=128, height=128, depth=8):
     """Build a 3D convolutional neural network model."""
 
-    inputs = keras.Input((width, height, depth, 1))
+    inputs = keras.Input((width, height, depth,1))
 
-    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu")(inputs)
-    x = layers.MaxPool3D(pool_size=2)(x)
+    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(inputs)
+    x = layers.MaxPool3D(pool_size=(2,2,1))(x)
     x = layers.BatchNormalization()(x)
 
-    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu")(x)
-    x = layers.MaxPool3D(pool_size=2)(x)
+    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
+    x = layers.MaxPool3D(pool_size=(2,2,2))(x)
     x = layers.BatchNormalization()(x)
 
-    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu")(x)
-    x = layers.MaxPool3D(pool_size=2)(x)
+    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
+    x = layers.MaxPool3D(pool_size=(2,2,2))(x)
     x = layers.BatchNormalization()(x)
 
-    x = layers.Conv3D(filters=256, kernel_size=3, activation="relu")(x)
-    x = layers.MaxPool3D(pool_size=2)(x)
-    x = layers.BatchNormalization()(x)
+    # x = layers.Conv3D(filters=256, kernel_size=3, activation="relu",padding='same')(x)
+    # # x = layers.MaxPool3D(pool_size=2)(x)
+    # x = layers.BatchNormalization()(x)
 
     x = layers.GlobalAveragePooling3D()(x)
     x = layers.Dense(units=128, activation="relu")(x)
     # x = layerss.Dropout(0.3)(x)
 
-    outputs = layers.Dense(units=7, activation="softmax")(x)
+    outputs = layers.Dense(units=8, activation="softmax")(x)
 
     # Define the model.
     model = keras.Model(inputs, outputs, name="3dcnn")
@@ -433,8 +467,10 @@ def get_model(width=128, height=128, depth=64):
 
 
 # Build model.
-model = get_model(width=128, height=128, depth=64)
+
+model = get_model(width=128, height=128, depth=8)
 model.summary()
+
 
 """
 ## Train model

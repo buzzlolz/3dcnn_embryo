@@ -25,7 +25,7 @@ equivalent: it takes as input a 3D volume or a sequence of 2D frames (e.g. slice
 ## Setup
 """
 
-from load_owndata import load_own_data
+from load_owndata_v1 import load_own_data
 
 import os
 import zipfile
@@ -348,7 +348,7 @@ def plot_slices(num_rows, num_columns, width, height, data):
 
 # Visualize montage of slices.
 # 4 rows and 10 columns for 100 slices of the CT scan.
-print('image shape :',image.shape)
+# print('image shape :',image.shape)
 plot_slices(3,2, 128, 128, image[:, :, :6])
 
 """
