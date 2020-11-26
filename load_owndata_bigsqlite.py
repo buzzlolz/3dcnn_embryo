@@ -48,7 +48,7 @@ def load_own_data(label,each_stage_get_num):
     for i in range(7):
         fn = 'FP0'+str(i)
         fd_path = os.path.join(root_path,fn)
-        file_list = os.listdir(fd_path)
+        file_list = sorted(os.listdir(fd_path))
         each_fp_filename_list.append(file_list)
     print(np.array(each_fp_filename_list).shape)
     # print(each_fp_filename_list[1])
