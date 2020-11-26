@@ -76,6 +76,7 @@ def load_own_data(label):
         #     #     filename_path = os.path.join(fd_path,filename)
         #     #     print(filename_path[0])
         # print("total img shape:",np.array(total_img).shape)
+    # print(test)
 
     return file_num, test
 

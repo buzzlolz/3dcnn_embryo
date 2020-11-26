@@ -230,25 +230,25 @@ each_stage_get_num=get_min_datanum()
 
 data_x=np.zeros(shape=[each_stage_get_num*8,128, 128,8])
 label_y=np.zeros(shape=[each_stage_get_num*8,8])
-for i in range(1,9):
+# for i in range(1,9):
 
-    file_num,data_i=load_own_data(i,each_stage_get_num)
-    print("file num:",file_num)
-    print("num_index:",num_index)
-    data_i=np.array([resize_volume(img) for img in data_i])
-    data_x[num_index:num_index+file_num]=copy.copy(data_i)
-    label = np.array([i for _ in range(len(data_i))])
-    data_i=None
-    label=tf.one_hot(label,8)
-    label_y[num_index:num_index+file_num]=copy.copy(label)
-    print("shape label_y:",label_y.shape)
-    label=None
-    num_index+=file_num
+#     file_num,data_i=load_own_data(i,each_stage_get_num)
+#     print("file num:",file_num)
+#     print("num_index:",num_index)
+#     data_i=np.array([resize_volume(img) for img in data_i])
+#     data_x[num_index:num_index+file_num]=copy.copy(data_i)
+#     label = np.array([i for _ in range(len(data_i))])
+#     data_i=None
+#     label=tf.one_hot(label,8)
+#     label_y[num_index:num_index+file_num]=copy.copy(label)
+#     print("shape label_y:",label_y.shape)
+#     label=None
+#     num_index+=file_num
 
 data_x=data_x.astype(np.float32)#import !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 label_y=label_y.astype(np.float32)#import !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-# print("data x :",data_x)
+print("data x :",data_x)
 print("shape label_y:",label_y.shape)
 
 # # Read and process the scans.
@@ -364,48 +364,33 @@ val_labels_chunks = list(np.split(y_val, 11))
 
 def genenerator_t():
     for i, j in zip(train_data_chunks, train_labels_chunks):
-        for index,data in enumerate(i):
-
-            # print('genenerator_tj.shape',index)
-            yield i[index], j[index]
+        yield i, j
 
 def genenerator_v():
     for i, j in zip(val_data_chunks, val_labels_chunks):
-        for index,data in enumerate(i):
-            yield i[index], j[index]
+        yield i, j
 
 # Define data loaders.
 # train_loader = tf.data.Dataset.from_tensor_slices((x_train, y_train))
 # validation_loader = tf.data.Dataset.from_tensor_slices((x_val, y_val))
-shapes=((128, 128, 8),(8))
-shapes1=((128, 128, 8),(8))
-train_loader = tf.data.Dataset.from_generator(genenerator_t, (tf.float32, tf.float32),output_shapes=shapes)
-validation_loader = tf.data.Dataset.from_generator(genenerator_v, (tf.float32, tf.float32),output_shapes=shapes1)
 
+train_loader = tf.data.Dataset.from_generator(genenerator_t, (tf.float32, tf.float32))
+validation_loader = tf.data.Dataset.from_generator(genenerator_v, (tf.float32, tf.float32))
 
-# train_dataset=iter(train_loader)
-# validation_dataset=iter(validation_loader)
-# print("RRRRRRRRRRRRRRRRRR",next(train_dataset))
-batch_size = 4
+batch_size = 1
 # Augment the on the fly during training.
 train_dataset = (
-    # train_loader.shuffle(len(x_train))
-    train_loader.map(train_preprocessing)
+    train_loader.shuffle(len(x_train)).map(train_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
-
-
 # Only rescale.
 validation_dataset = (
-    # validation_loader.shuffle(len(x_val))
-    validation_loader.map(validation_preprocessing)
+    validation_loader.shuffle(len(x_val))
+    .map(validation_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
-# validation_dataset=iter(validation_dataset)
-# train_dataset=next(train_dataset)
-
 
 """
 Visualize an augmented CT scan.
@@ -421,7 +406,7 @@ images, labels = list(data)[0]
 images = images.numpy()
 image = images[0]
 print("Dimension of the CT scan is:", image.shape)
-plt.imshow(np.squeeze(image[:, :, 5]), cmap="gray")
+# plt.imshow(np.squeeze(image[:, :, 5]), cmap="gray")
 
 
 """
@@ -456,7 +441,7 @@ def plot_slices(num_rows, num_columns, width, height, data):
 # Visualize montage of slices.
 # 4 rows and 10 columns for 100 slices of the CT scan.
 print('image shape :',image.shape)
-plot_slices(3,2, 128, 128, image[:, :, :6])
+# plot_slices(3,2, 128, 128, image[:, :, :6])
 
 """
 ## Define a 3D convolutional neural network
