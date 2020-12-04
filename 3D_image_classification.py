@@ -25,13 +25,18 @@ equivalent: it takes as input a 3D volume or a sequence of 2D frames (e.g. slice
 ## Setup
 """
 
-from load_owndata_bigsqlite import load_own_data,get_total_datanum,get_min_datanum
+# from load_owndata_bigsqlite import load_own_data,get_total_datanum,get_min_datanum
+from load_owndata_1203 import load_own_data,get_min_datanum,load_own_data_new,get_total_train_datanum
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
+import datetime
 
+import tensorboard
 import os
 import zipfile
+
+from sklearn.metrics import confusion_matrix
 import numpy as np
 import tensorflow as tf
 
@@ -226,13 +231,18 @@ label_y=[]
 #         print("shape label_y:",label_y.shape)
 
 num_index = 0
-each_stage_get_num=get_min_datanum()
+# each_stage_get_num=get_min_datanum()
+total_data_num=get_total_train_datanum()
 
-data_x=np.zeros(shape=[each_stage_get_num*8,128, 128,8])
-label_y=np.zeros(shape=[each_stage_get_num*8,8])
+# data_x=np.zeros(shape=[each_stage_get_num*8,128, 128,8])
+# label_y=np.zeros(shape=[each_stage_get_num*8,8])
+
+data_x=np.zeros(shape=[total_data_num,128, 128,8])
+label_y=np.zeros(shape=[total_data_num,8])
+
 for i in range(1,9):
 
-    file_num,data_i=load_own_data(i,each_stage_get_num)
+    file_num,data_i=load_own_data_new(i)
     print("file num:",file_num)
     print("num_index:",num_index)
     data_i=np.array([resize_volume(img) for img in data_i])
@@ -356,11 +366,19 @@ training and validation data are already rescaled to have values between 0 and 1
 """
 
 
-train_data_chunks = list(np.split(x_train, 3))
-train_labels_chunks = list(np.split(y_train, 3))
+# train_data_chunks = list(np.split(x_train, 3))
+# train_labels_chunks = list(np.split(y_train, 3))
 
-val_data_chunks = list(np.split(x_val, 11))
-val_labels_chunks = list(np.split(y_val, 11))
+# val_data_chunks = list(np.split(x_val, 11))
+# val_labels_chunks = list(np.split(y_val, 11))
+
+
+train_data_chunks = list(np.split(x_train, 5))
+train_labels_chunks = list(np.split(y_train, 5))
+
+val_data_chunks = list(np.split(x_val, 3))
+val_labels_chunks = list(np.split(y_val, 3))
+
 
 def genenerator_t():
     for i, j in zip(train_data_chunks, train_labels_chunks):
@@ -386,11 +404,10 @@ validation_loader = tf.data.Dataset.from_generator(genenerator_v, (tf.float32, t
 # train_dataset=iter(train_loader)
 # validation_dataset=iter(validation_loader)
 # print("RRRRRRRRRRRRRRRRRR",next(train_dataset))
-batch_size = 4
+batch_size = 16
 # Augment the on the fly during training.
 train_dataset = (
-    # train_loader.shuffle(len(x_train))
-    train_loader.map(train_preprocessing)
+    train_loader.shuffle(len(x_train)).map(train_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
@@ -398,8 +415,7 @@ train_dataset = (
 
 # Only rescale.
 validation_dataset = (
-    # validation_loader.shuffle(len(x_val))
-    validation_loader.map(validation_preprocessing)
+    validation_loader.shuffle(len(x_val)).map(validation_preprocessing)
     .batch(batch_size)
     .prefetch(2)
 )
@@ -421,7 +437,7 @@ images, labels = list(data)[0]
 images = images.numpy()
 image = images[0]
 print("Dimension of the CT scan is:", image.shape)
-plt.imshow(np.squeeze(image[:, :, 5]), cmap="gray")
+# plt.imshow(np.squeeze(image[:, :, 5]), cmap="gray")
 
 
 """
@@ -456,7 +472,7 @@ def plot_slices(num_rows, num_columns, width, height, data):
 # Visualize montage of slices.
 # 4 rows and 10 columns for 100 slices of the CT scan.
 print('image shape :',image.shape)
-plot_slices(3,2, 128, 128, image[:, :, :6])
+# plot_slices(3,2, 128, 128, image[:, :, :6])
 
 """
 ## Define a 3D convolutional neural network
@@ -474,19 +490,23 @@ def get_model(width=128, height=128, depth=8):
 
     x = layers.Conv3D(filters=32, kernel_size=3, activation="relu",padding='same')(inputs)
     x = layers.Conv3D(filters=32, kernel_size=3, activation="relu",padding='same')(x)
+    x = layers.Conv3D(filters=32, kernel_size=3, activation="relu",padding='same')(x)
     x = layers.MaxPool3D(pool_size=(2,2,2), padding="same")(x)
+    # x = layers.Dropout(0.25)(x)
 
 
+    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
     x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
     x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
     x = layers.MaxPool3D(pool_size=(2,2,2), padding="same")(x)
+    # x = layers.Dropout(0.25)(x)
 
-    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
-    x = layers.Conv3D(filters=64, kernel_size=3, activation="relu",padding='same')(x)
+    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
+    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
     # x = layers.MaxPool3D(pool_size=(3,3,3), padding="same")(x)
 
-    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
-    x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
+    # x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
+    # x = layers.Conv3D(filters=128, kernel_size=3, activation="relu",padding='same')(x)
     # x = layers.MaxPool3D(pool_size=(3,3,3), padding="same")(x)
     # x = layers.BatchNormalization()(x)
 
@@ -503,8 +523,15 @@ def get_model(width=128, height=128, depth=8):
     # x = layers.BatchNormalization()(x)
 
     x = layers.GlobalAveragePooling3D()(x)
-    x = layers.Dense(units=512, activation="relu")(x)
+    
+    x = layers.Dense(units=512)(x)
     x = layers.BatchNormalization()(x)
+    x=layers.ReLU()(x)
+    # x = layers.Dropout(0.3)(x)
+
+    x = layers.Dense(units=256)(x)
+    x = layers.BatchNormalization()(x)
+    x=layers.ReLU()(x)
     # x = layers.Dropout(0.3)(x)
     # x = layerss.Dropout(0.3)(x)
 
@@ -540,10 +567,14 @@ model.compile(
 checkpoint_cb = keras.callbacks.ModelCheckpoint(
     "3d_image_classification.h5", save_best_only=True
 )
+
 early_stopping_cb = keras.callbacks.EarlyStopping(monitor="val_acc", patience=30)
 
+log_dir="./logs/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
 # Train the model, doing validation at the end of each epoch
-epochs = 500
+epochs = 200
 model.fit(
     train_dataset,
     validation_data=validation_dataset,
@@ -551,7 +582,7 @@ model.fit(
     shuffle=True,
     verbose=2,
     # callbacks=[checkpoint_cb, early_stopping_cb],
-    callbacks=[checkpoint_cb],
+    callbacks=[checkpoint_cb,tensorboard_callback],
 )
 
 """
@@ -581,19 +612,31 @@ for i, metric in enumerate(["acc", "loss"]):
     ax[i].set_ylabel(metric)
     ax[i].legend(["train", "val"])
 
+
+plt.savefig('val_result.jpg')
+
 """
 ## Make predictions on a single CT scan
 """
-
+y_ori=[]
+y_pre=[]
 # Load best weights.
 model.load_weights("3d_image_classification.h5")
-prediction = model.predict(np.expand_dims(x_val[0], axis=0))[0]
-print('predict shape:',np.expand_dims(x_val[0], axis=0).shape)
-scores = [1 - prediction[0], prediction[0]]
+for i in range(len(x_val)):
+    prediction = model.predict(np.expand_dims(x_val[i], axis=0))[0]
+    prediction=np.argmax(prediction)
+    print(np.argmax(y_val[i]))
+    y_ori.append(np.argmax(y_val[i]))
+    y_pre.append(prediction)
 
-class_names = ["normal", "abnormal"]
-for score, name in zip(scores, class_names):
-    print(
-        "This model is %.2f percent confident that CT scan is %s"
-        % ((100 * score), name)
-    )
+    print('predict result:',prediction)
+
+print(confusion_matrix(y_ori,y_pre))
+# scores = [1 - prediction[0], prediction[0]]
+
+# class_names = ["normal", "abnormal"]
+# for score, name in zip(scores, class_names):
+#     print(
+#         "This model is %.2f percent confident that CT scan is %s"
+#         % ((100 * score), name)
+#     )
